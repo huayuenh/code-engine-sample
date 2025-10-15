@@ -6,13 +6,13 @@
 # 2. Setup secrets in your repository by going to settings: Create ICR_NAMESPACE and IBM_CLOUD_API_KEY
 # 3. Change the values for the IBM_CLOUD_REGION, REGISTRY_HOSTNAME, IMAGE_NAME, IKS_CLUSTER, DEPLOYMENT_NAME, and PORT
 
-name: Build and Deploy to IKS
+name: Build and Deploy to Code Engine
 
 on:
   workflow_dispatch:
-    branches: [ ce ]
+    branches: [ main ]
   push:
-    branches: [ "ce" ]
+    branches: [ "main" ]
 
 # Environment variables available to all jobs and steps in this workflow
 env:
@@ -54,7 +54,3 @@ jobs:
         build-source: './'
         cpu: 1
         memory: 4G
-
-
-
-
