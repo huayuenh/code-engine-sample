@@ -1,0 +1,81 @@
+# This workflow will build a docker container, publish it to IBM Container Registry, and deploy it to IKS when there is a push to the "main" branch.
+#
+# To configure this workflow:
+#
+# 1. Ensure that your repository contains a Dockerfile
+# 2. Setup secrets in your repository by going to settings: Create ICR_NAMESPACE and IBM_CLOUD_API_KEY
+# 3. Change the values for the IBM_CLOUD_REGION, REGISTRY_HOSTNAME, IMAGE_NAME, IKS_CLUSTER, DEPLOYMENT_NAME, and PORT
+
+name: Build and Test PR
+
+on:
+  workflow_dispatch:
+    branches: [ main ]
+  pull_request:
+    types: [opened, reopened]
+
+# Environment variables available to all jobs and steps in this workflow
+env:
+  GITHUB_SHA: ${{ github.sha }}
+  IMAGE_NAME: ${{ vars.IMAGE_NAME }}
+jobs:
+  pr-pipeline:
+    name: Setup, Test, Build
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+
+    - id: checkout
+      name: Clone repo
+      uses: actions/checkout@v4
+    
+    - id: set-commit-status-start
+      name: Set up initial commit status
+      uses: huayuenh/ghacatalog/set-commit-status@main
+      with:
+        github_token: ${{ github.token }}
+        state: "pending"
+        description: "Running"
+        context: "PR Pipeline"
+        sha: ${{ github.sha }}
+        target_url: "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        github_repository: ${{ github.repository }}
+
+    - id: unit-test
+      name: Run Unit tests
+      run: |
+        npm install
+        npm run test-unit
+
+    - id: build-image
+      name: Build image
+      uses: redhat-actions/buildah-build@v2
+      with:
+        image: "${{ vars.ICR_REGION }}/${{ vars.ICR_NAMESPACE }}/${{ vars.IMAGE_NAME }}"
+        tags: "${{ github.sha }}"
+        containerfiles: |
+          ./Dockerfile
+
+    - id: set-commit-status-fail
+      if: ${{ failure() }}
+      uses: huayuenh/ghacatalog/set-commit-status@main
+      with:
+        github_token: ${{ github.token }}
+        state: "failure"
+        description: "Complete - Failure"
+        context: "PR Pipeline"
+        sha: ${{ github.sha }}
+        target_url: "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        github_repository: ${{ github.repository }}
+
+    - id: set-commit-status-success
+      if: ${{ success() }}
+      uses: huayuenh/ghacatalog/set-commit-status@main
+      with:
+        github_token: ${{ github.token }}
+        state: "success"
+        description: "Complete - Success"
+        context: "PR Pipeline"
+        sha: ${{ github.sha }}
+        target_url: "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        github_repository: ${{ github.repository }}
